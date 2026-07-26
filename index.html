@@ -70,6 +70,28 @@
     display: inline-block; padding: 3px 10px; border-radius: 999px;
     background: #232b34; color: var(--muted); font-size: .9rem; font-weight: 600;
   }
+  .chip.new { background: #24301a; color: var(--good); }
+  .prog { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .prog .track { flex: 1; height: 6px; border-radius: 3px; background: #232b34; overflow: hidden; }
+  .prog .fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .25s; }
+  .prog .count { color: var(--muted); font-size: .85rem; white-space: nowrap; }
+  .qcard { text-align: center; padding: 28px 18px; }
+  .qcard .chips { margin-bottom: 18px; display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+  .en-text { font-size: 1.5rem; font-weight: 600; line-height: 1.35; }
+  .es-text {
+    font-family: "Barlow Condensed", Inter, sans-serif;
+    font-size: 2.1rem; font-weight: 700; color: var(--accent); line-height: 1.2;
+    margin-top: 16px;
+  }
+  .note-text { margin-top: 8px; font-size: .9rem; color: var(--muted); font-style: italic; }
+  .btnrow { display: flex; gap: 10px; margin-top: 14px; }
+  .btnrow .btn { flex: 1; }
+  .btn.small { min-height: 46px; font-size: 1.4rem; }
+  .stack { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+  .wrap-stats { display: flex; gap: 10px; margin: 16px 0; }
+  .wrap-stats .tile { flex: 1; background: #232b34; border-radius: 12px; padding: 12px; text-align: center; }
+  .wrap-stats .tile b { display: block; font-size: 1.5rem; color: var(--accent); font-family: "Barlow Condensed", sans-serif; }
+  .wrap-stats .tile span { font-size: .78rem; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -161,8 +183,136 @@
       VIEWS[b.dataset.tab]();
     }));
 
-    // ---- views (filled in by later tasks) ----
-    function renderToday() {}
+    // ---- shared lookups ----
+    const CAT_META = [
+      ["greetings-basics", "👋 Greetings"],
+      ["courtesy", "🙏 Courtesy"],
+      ["smalltalk-you", "🗣️ Small talk"],
+      ["questions-connectors", "🔗 Questions & connectors"],
+      ["getting-around", "🧭 Getting around"],
+      ["food-restaurants", "🌮 Food & restaurants"],
+      ["money-shopping", "💵 Money & shopping"],
+      ["time-plans", "🕐 Time & plans"],
+      ["opinions-reactions", "💬 Opinions & reactions"],
+      ["feelings-states", "😊 Feelings"],
+      ["emergencies-help", "🚨 Emergencies & help"],
+      ["daily-life", "🏠 Daily life"],
+    ];
+    const CAT_LABEL = Object.fromEntries(CAT_META);
+    const BYID = Object.fromEntries(PHRASES.map(p => [p.id, p]));
+    function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+    // ---- today session ----
+    let session = null; // { queue:[id], answered:Set, revealed:bool, doneRev, doneNew, total, practice }
+
+    function startSession() {
+      const today = SRS.todayStr();
+      const { reviews, news } = SRS.buildSession(PHRASES, DB.cards, today, DB.newPerDay);
+      const queue = reviews.concat(news);
+      session = { queue, answered: new Set(), revealed: false,
+                  doneRev: 0, doneNew: 0, total: queue.length, practice: false };
+    }
+
+    function startPractice() {
+      const known = PHRASES.filter(p => DB.cards[p.id] && DB.cards[p.id].lvl >= 1).map(p => p.id);
+      for (let i = known.length - 1; i > 0; i--) { // shuffle
+        const j = Math.floor(Math.random() * (i + 1));
+        [known[i], known[j]] = [known[j], known[i]];
+      }
+      const queue = known.slice(0, 10);
+      session = { queue, answered: new Set(), revealed: false,
+                  doneRev: 0, doneNew: 0, total: queue.length, practice: true };
+      renderToday();
+    }
+
+    function reveal() {
+      session.revealed = true;
+      renderToday();
+      speakOrNotice(BYID[session.queue[0]].es);
+    }
+
+    function grade(got) {
+      const id = session.queue.shift();
+      const today = SRS.todayStr();
+      if (!session.practice && !session.answered.has(id)) {
+        session.answered.add(id);
+        const card = DB.cards[id] || SRS.newCard();
+        const wasNew = card.lvl === 0;
+        DB.cards[id] = got ? SRS.gradeGot(card, today) : SRS.gradeMiss(card, today);
+        const entry = DB.log[today] || { rev: 0, new: 0 };
+        wasNew ? entry.new++ : entry.rev++;
+        DB.log[today] = entry;
+        DB.streak = SRS.updateStreak(DB.streak, today);
+        wasNew ? session.doneNew++ : session.doneRev++;
+        save();
+      }
+      if (!got && !session.practice) session.queue.push(id); // recycle until Got
+      session.revealed = false;
+      renderToday();
+    }
+
+    function renderToday() {
+      if (!session) startSession();
+      const v = document.getElementById("view-today");
+
+      if (!session.queue.length) {
+        const did = session.doneRev + session.doneNew;
+        v.innerHTML = `
+          <div class="card qcard">
+            <h2 style="font-size:1.6rem">${session.practice ? "Practice done 💪" : did ? "¡Bien hecho! 🎉" : "All caught up ✅"}</h2>
+            <div class="wrap-stats">
+              <div class="tile"><b>${session.doneRev}</b><span>reviews</span></div>
+              <div class="tile"><b>${session.doneNew}</b><span>new phrases</span></div>
+              <div class="tile"><b>${DB.streak.count}</b><span>day streak</span></div>
+            </div>
+            <p class="muted" style="font-size:.9rem">${session.practice || did ? "Come back tomorrow for your next session." : "Nothing due right now."}</p>
+            <div class="stack">
+              <button class="btn ghost" onclick="startPractice()">Practice 10 random known phrases</button>
+            </div>
+          </div>`;
+        return;
+      }
+
+      const id = session.queue[0];
+      const p = BYID[id];
+      const st = DB.cards[id];
+      const isNew = !st || st.lvl === 0;
+      const done = session.total - session.queue.length;
+      const pct = session.total ? Math.round(100 * done / session.total) : 0;
+
+      v.innerHTML = `
+        <div class="prog">
+          <div class="track"><div class="fill" style="width:${pct}%"></div></div>
+          <span class="count">${session.queue.length} left</span>
+        </div>
+        <div class="card qcard">
+          <div class="chips">
+            <span class="chip">${CAT_LABEL[p.cat] || p.cat}</span>
+            ${isNew && !session.practice ? '<span class="chip new">NEW</span>' : ""}
+          </div>
+          <div class="en-text">${esc(p.en)}</div>
+          ${session.revealed ? `
+            <div class="es-text">${esc(p.es)}</div>
+            ${p.note ? `<div class="note-text">${esc(p.note)}</div>` : ""}
+            <div class="btnrow">
+              <button class="btn ghost small" onclick="speakOrNotice(BYID['${id}'].es)">🔊</button>
+              <button class="btn ghost small" onclick="speakOrNotice(BYID['${id}'].es, 0.6)">🐢</button>
+            </div>
+            ${session.practice
+              ? `<div class="stack"><button class="btn accent" onclick="grade(true)">Next →</button></div>`
+              : `<div class="btnrow">
+                   <button class="btn bad" onclick="grade(false)">Missed it</button>
+                   <button class="btn good" onclick="grade(true)">Got it</button>
+                 </div>`}
+          ` : `
+            <div class="stack">
+              <button class="btn accent" onclick="reveal()">Show Spanish</button>
+            </div>
+            <p class="muted" style="margin-top:12px;font-size:.85rem">Say it out loud in Spanish first</p>
+          `}
+        </div>`;
+    }
+
     function renderLibrary() {}
     function renderProgress() {}
 
