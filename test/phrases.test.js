@@ -14,11 +14,11 @@ const CATS = new Set([
   "getting-around", "food-restaurants", "money-shopping", "time-plans",
   "opinions-reactions", "feelings-states", "emergencies-help", "daily-life",
 ]);
-const EXPECTED_COUNT = 500; // library complete
+const EXPECTED_COUNT = 500; // raised per expansion pack; final = 700 (strictEqual then)
 
 test("phrase count", () => {
   assert.ok(Array.isArray(P));
-  assert.strictEqual(P.length, EXPECTED_COUNT);
+  assert.ok(P.length >= EXPECTED_COUNT, `expected >= ${EXPECTED_COUNT}, got ${P.length}`);
 });
 
 test("every category has at least 20 phrases", () => {
@@ -27,11 +27,16 @@ test("every category has at least 20 phrases", () => {
   for (const c of CATS) assert.ok((counts[c] || 0) >= 20, c + ": " + (counts[c] || 0));
 });
 
-test("ids are p### sequential and unique", () => {
-  P.forEach((p, i) => {
-    assert.strictEqual(p.id, "p" + String(i + 1).padStart(3, "0"),
-      `index ${i} has id ${p.id}`);
-  });
+// Array position = unlock order; id = stable identity. They are decoupled:
+// every id p001..pN must exist exactly once, at any position.
+test("ids cover exactly p001..pN, each once, any order", () => {
+  const ids = new Set(P.map(p => p.id));
+  assert.strictEqual(ids.size, P.length, "duplicate id");
+  for (let i = 1; i <= P.length; i++) {
+    const id = "p" + String(i).padStart(3, "0");
+    assert.ok(ids.has(id), "missing " + id);
+  }
+  for (const p of P) assert.match(p.id, /^p\d{3}$/);
 });
 
 test("required fields and valid categories", () => {
