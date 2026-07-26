@@ -14,7 +14,7 @@ const CATS = new Set([
   "getting-around", "food-restaurants", "money-shopping", "time-plans",
   "opinions-reactions", "feelings-states", "emergencies-help", "daily-life",
 ]);
-const EXPECTED_COUNT = 55; // raised in each content tier; final = 500
+const EXPECTED_COUNT = 170; // raised in each content tier; final = 500
 
 test("phrase count", () => {
   assert.ok(Array.isArray(P));
