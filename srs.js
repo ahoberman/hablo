@@ -30,7 +30,24 @@
     return { lvl: 1, due: addDays(today, 1), seen: card.seen + 1, misses: card.misses + 1 };
   }
 
-  const SRS = { INTERVALS, MAX_LVL, todayStr, addDays, newCard, gradeGot, gradeMiss };
+  // phrases: library array (order = unlock order); cards: {id: state}
+  function buildSession(phrases, cards, today, newPerDay) {
+    const reviews = phrases
+      .filter(p => cards[p.id] && cards[p.id].due && cards[p.id].due <= today)
+      .sort((a, b) => (cards[a.id].due < cards[b.id].due ? -1 : cards[a.id].due > cards[b.id].due ? 1 : 0))
+      .map(p => p.id);
+    const news = phrases.filter(p => !cards[p.id]).slice(0, newPerDay).map(p => p.id);
+    return { reviews, news };
+  }
+
+  function updateStreak(streak, today) {
+    if (streak.lastDay === today) return streak;
+    const count = streak.lastDay === addDays(today, -1) ? streak.count + 1 : 1;
+    return { count, lastDay: today };
+  }
+
+  const SRS = { INTERVALS, MAX_LVL, todayStr, addDays, newCard, gradeGot, gradeMiss,
+                buildSession, updateStreak };
   if (typeof module !== "undefined" && module.exports) module.exports = SRS;
   else root.SRS = SRS;
 })(this);

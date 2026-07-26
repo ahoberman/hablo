@@ -37,3 +37,38 @@ test("gradeMiss resets to level 1, due tomorrow, counts the miss", () => {
   const c = SRS.gradeMiss({ lvl: 5, due: "2026-07-26", seen: 8, misses: 2 }, "2026-07-26");
   assert.deepStrictEqual(c, { lvl: 1, due: "2026-07-27", seen: 9, misses: 3 });
 });
+
+const LIB = [
+  { id: "p001", es: "a", en: "a", cat: "x" },
+  { id: "p002", es: "b", en: "b", cat: "x" },
+  { id: "p003", es: "c", en: "c", cat: "x" },
+  { id: "p004", es: "d", en: "d", cat: "x" },
+];
+
+test("buildSession: due reviews oldest-first, then new cards in library order", () => {
+  const cards = {
+    p002: { lvl: 2, due: "2026-07-20", seen: 3, misses: 0 }, // overdue (oldest)
+    p001: { lvl: 1, due: "2026-07-26", seen: 1, misses: 0 }, // due today
+    p003: { lvl: 4, due: "2026-08-01", seen: 6, misses: 0 }, // not due
+  };
+  const s = SRS.buildSession(LIB, cards, "2026-07-26", 10);
+  assert.deepStrictEqual(s.reviews, ["p002", "p001"]);
+  assert.deepStrictEqual(s.news, ["p004"]); // only unseen phrase
+});
+
+test("buildSession caps new cards at newPerDay", () => {
+  const s = SRS.buildSession(LIB, {}, "2026-07-26", 2);
+  assert.deepStrictEqual(s.news, ["p001", "p002"]);
+  assert.deepStrictEqual(s.reviews, []);
+});
+
+test("updateStreak: same day no-op, consecutive increments, gap resets", () => {
+  assert.deepStrictEqual(SRS.updateStreak({ count: 3, lastDay: "2026-07-26" }, "2026-07-26"),
+    { count: 3, lastDay: "2026-07-26" });
+  assert.deepStrictEqual(SRS.updateStreak({ count: 3, lastDay: "2026-07-25" }, "2026-07-26"),
+    { count: 4, lastDay: "2026-07-26" });
+  assert.deepStrictEqual(SRS.updateStreak({ count: 3, lastDay: "2026-07-20" }, "2026-07-26"),
+    { count: 1, lastDay: "2026-07-26" });
+  assert.deepStrictEqual(SRS.updateStreak({ count: 0, lastDay: null }, "2026-07-26"),
+    { count: 1, lastDay: "2026-07-26" });
+});
