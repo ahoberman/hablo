@@ -14,7 +14,8 @@ Full behavior spec: `docs/superpowers/specs/2026-07-26-hablo-spanish-trainer-des
 - `phrases.js` — `window.PHRASES = [...]`; content only, never logic.
   Array order = unlock order.
 - `srs.js` — pure SRS logic, dual browser (`window.SRS`) / Node module.
-- `test/` — `node --test test/` (Node built-in runner, zero deps).
+- `test/` — `node --test` (Node built-in runner, zero deps; bare invocation,
+  a `test/` path argument breaks discovery on Node 24).
 
 ## Hard rules
 - **Phrase ids (`p001`…) are stable forever** — never renumber, reuse, or

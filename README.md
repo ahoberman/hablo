@@ -6,4 +6,4 @@ it → self-grade. Static site, no backend; progress lives in localStorage.
 
 Live: https://ahoberman.github.io/hablo/
 Deploy: commit to main (GitHub Pages).
-Tests: `node --test test/`
+Tests: `node --test`
