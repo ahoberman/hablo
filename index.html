@@ -119,6 +119,38 @@
       document.getElementById("notice").style.display = "block";
     }
 
+    // ---- audio ----
+    let VOICE = null;
+    function pickVoice() {
+      if (!("speechSynthesis" in window)) return;
+      const vs = speechSynthesis.getVoices().filter(v => v.lang && /^es/i.test(v.lang));
+      VOICE =
+        vs.find(v => /es[-_]MX/i.test(v.lang) && /paulina/i.test(v.name)) ||
+        vs.find(v => /es[-_]MX/i.test(v.lang)) ||
+        vs.find(v => /es[-_]US/i.test(v.lang)) ||
+        vs[0] || null;
+    }
+    if ("speechSynthesis" in window) {
+      pickVoice();
+      speechSynthesis.addEventListener("voiceschanged", pickVoice);
+    }
+    // rate: 0.9 normal, 0.6 slow. Returns false when unavailable.
+    function speak(text, rate) {
+      if (!("speechSynthesis" in window) || !VOICE) return false;
+      speechSynthesis.cancel(); // avoid queue pileup on rapid taps
+      const u = new SpeechSynthesisUtterance(text);
+      u.voice = VOICE; u.lang = VOICE.lang; u.rate = rate || 0.9;
+      speechSynthesis.speak(u);
+      return true;
+    }
+    let audioNoticed = false;
+    function speakOrNotice(text, rate) {
+      if (!speak(text, rate) && !audioNoticed) {
+        audioNoticed = true;
+        notice("Audio unavailable: no Spanish voice on this device/browser. Flashcards still work.");
+      }
+    }
+
     // ---- tabs ----
     const VIEWS = { today: renderToday, library: renderLibrary, progress: renderProgress };
     document.querySelectorAll(".tabbtn").forEach(b => b.addEventListener("click", () => {
