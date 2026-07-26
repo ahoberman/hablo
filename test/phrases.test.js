@@ -15,11 +15,11 @@ const CATS = new Set([
   "opinions-reactions", "feelings-states", "emergencies-help", "daily-life",
   "casual-slang", "verbs-action",
 ]);
-const EXPECTED_COUNT = 660; // raised per expansion pack; final = 700 (strictEqual then)
+const EXPECTED_COUNT = 700; // library complete (v1.1 expansion)
 
 test("phrase count", () => {
   assert.ok(Array.isArray(P));
-  assert.ok(P.length >= EXPECTED_COUNT, `expected >= ${EXPECTED_COUNT}, got ${P.length}`);
+  assert.strictEqual(P.length, EXPECTED_COUNT);
 });
 
 test("every category has at least 20 phrases", () => {
