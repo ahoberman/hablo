@@ -19,7 +19,18 @@
     return todayStr(d);
   }
 
-  const SRS = { INTERVALS, MAX_LVL, todayStr, addDays };
+  function newCard() { return { lvl: 0, due: null, seen: 0, misses: 0 }; }
+
+  function gradeGot(card, today) {
+    const lvl = Math.min(card.lvl + 1, MAX_LVL);
+    return { lvl, due: addDays(today, INTERVALS[lvl]), seen: card.seen + 1, misses: card.misses };
+  }
+
+  function gradeMiss(card, today) {
+    return { lvl: 1, due: addDays(today, 1), seen: card.seen + 1, misses: card.misses + 1 };
+  }
+
+  const SRS = { INTERVALS, MAX_LVL, todayStr, addDays, newCard, gradeGot, gradeMiss };
   if (typeof module !== "undefined" && module.exports) module.exports = SRS;
   else root.SRS = SRS;
 })(this);
