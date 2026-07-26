@@ -14,11 +14,17 @@ const CATS = new Set([
   "getting-around", "food-restaurants", "money-shopping", "time-plans",
   "opinions-reactions", "feelings-states", "emergencies-help", "daily-life",
 ]);
-const EXPECTED_COUNT = 315; // raised in each content tier; final = 500
+const EXPECTED_COUNT = 500; // library complete
 
 test("phrase count", () => {
   assert.ok(Array.isArray(P));
-  assert.ok(P.length >= EXPECTED_COUNT, `expected >= ${EXPECTED_COUNT}, got ${P.length}`);
+  assert.strictEqual(P.length, EXPECTED_COUNT);
+});
+
+test("every category has at least 20 phrases", () => {
+  const counts = {};
+  for (const p of P) counts[p.cat] = (counts[p.cat] || 0) + 1;
+  for (const c of CATS) assert.ok((counts[c] || 0) >= 20, c + ": " + (counts[c] || 0));
 });
 
 test("ids are p### sequential and unique", () => {
