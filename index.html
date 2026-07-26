@@ -161,7 +161,8 @@
   <script>
     // ---- state ----
     function defaultState() {
-      return { v: 1, cards: {}, newPerDay: 10, streak: { count: 0, lastDay: null }, log: {} };
+      return { v: 1, cards: {}, newPerDay: 10, streak: { count: 0, lastDay: null }, log: {},
+               voice: null }; // voiceURI of user-chosen TTS voice; null = auto
     }
     function load() {
       try {
@@ -184,14 +185,30 @@
 
     // ---- audio ----
     let VOICE = null;
+    function esVoices() {
+      if (!("speechSynthesis" in window)) return [];
+      return speechSynthesis.getVoices().filter(v => v.lang && /^es/i.test(v.lang));
+    }
+    // Higher = better. Enhanced/premium system voices sound far less robotic
+    // than the compact defaults, so they win whenever installed.
+    function voiceQuality(v) {
+      const u = (v.voiceURI || "") + " " + v.name;
+      let q = 0;
+      if (/premium/i.test(u)) q += 40;
+      if (/enhanced/i.test(u)) q += 30;
+      if (/neural|natural|online/i.test(u)) q += 30;
+      if (/google/i.test(u)) q += 20;
+      if (/es[-_]MX/i.test(v.lang)) q += 15;
+      else if (/es[-_](US|419)/i.test(v.lang)) q += 10;
+      if (/paulina/i.test(v.name)) q += 5;
+      if (/eloquence|compact|espeak/i.test(u)) q -= 30;
+      return q;
+    }
     function pickVoice() {
-      if (!("speechSynthesis" in window)) return;
-      const vs = speechSynthesis.getVoices().filter(v => v.lang && /^es/i.test(v.lang));
-      VOICE =
-        vs.find(v => /es[-_]MX/i.test(v.lang) && /paulina/i.test(v.name)) ||
-        vs.find(v => /es[-_]MX/i.test(v.lang)) ||
-        vs.find(v => /es[-_]US/i.test(v.lang)) ||
-        vs[0] || null;
+      const vs = esVoices();
+      if (!vs.length) { VOICE = null; return; }
+      VOICE = (DB.voice && vs.find(v => v.voiceURI === DB.voice)) ||
+              vs.slice().sort((a, b) => voiceQuality(b) - voiceQuality(a))[0];
     }
     if ("speechSynthesis" in window) {
       pickVoice();
@@ -401,6 +418,11 @@
       session = null; // rebuild next session with new cap
       renderProgress();
     }
+    function setVoice(uri) {
+      DB.voice = uri || null; save();
+      pickVoice();
+      speakOrNotice("Hola, ¿cómo estás? Mucho gusto."); // audition sample
+    }
     function exportBackup() {
       const blob = new Blob([JSON.stringify(DB, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
@@ -464,6 +486,15 @@
         <div class="card"><div class="sect-title" style="margin-top:0">Last 7 days</div>
           <div class="chart">${chart}</div>
         </div>
+        <div class="sect-title">Voice</div>
+        <select class="search" style="margin-bottom:0" onchange="setVoice(this.value)">
+          <option value="">Auto (best available)</option>
+          ${esVoices().map(vo => `<option value="${esc(vo.voiceURI)}" ${DB.voice === vo.voiceURI ? "selected" : ""}>
+            ${esc(vo.name)} (${esc(vo.lang)})</option>`).join("")}
+        </select>
+        <p class="muted" style="font-size:.8rem;margin:6px 2px 0">Picking a voice plays a sample.
+          Tip: download “Paulina (Enhanced)” in iPhone Settings → Accessibility → Spoken Content →
+          Voices → Spanish for much better audio.</p>
         <div class="sect-title">New phrases per day</div>
         <div class="seg">
           ${[5, 10, 15, 20].map(n =>
