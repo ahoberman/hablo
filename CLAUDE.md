@@ -14,6 +14,10 @@ Full behavior spec: `docs/superpowers/specs/2026-07-26-hablo-spanish-trainer-des
 - `phrases.js` — `window.PHRASES = [...]`; content only, never logic.
   Array order = unlock order.
 - `srs.js` — pure SRS logic, dual browser (`window.SRS`) / Node module.
+- `audio/` — one neural MP3 per phrase (`p001.mp3`…), Microsoft es-MX Dalia.
+  Primary playback; device TTS is only the fallback (offline/missing file).
+  After adding phrases: `pip install edge-tts`, then `python3 tools/gen_audio.py`
+  (idempotent — only generates missing files) and commit the new MP3s.
 - `test/` — `node --test` (Node built-in runner, zero deps; bare invocation,
   a `test/` path argument breaks discovery on Node 24).
 

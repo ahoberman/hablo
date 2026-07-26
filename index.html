@@ -99,11 +99,18 @@
     color: var(--ink); font-size: 1rem; font-family: Inter, sans-serif;
   }
   .search::placeholder { color: var(--muted); }
-  .cat-head {
+  .cat-row {
+    display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px; margin-bottom: 6px; cursor: pointer; color: var(--ink);
     font-family: "Barlow Condensed", sans-serif; font-size: 1.2rem; font-weight: 700;
-    margin: 18px 2px 8px; color: var(--ink);
   }
-  .cat-head .muted { font-size: .95rem; font-weight: 600; }
+  .cat-row .cat-label { flex: 1; }
+  .cat-row .muted { font-size: .95rem; font-weight: 600; }
+  .cat-row .chev { color: var(--muted); transition: transform .15s; }
+  .cat-row.open { border-color: var(--accent); }
+  .cat-row.open .chev { transform: rotate(90deg); color: var(--accent); }
+  .cat-row.open + .prow, .prow + .prow { margin-left: 8px; }
   .prow {
     display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
     background: var(--card); border: 1px solid var(--line); border-radius: 12px;
@@ -231,6 +238,30 @@
       }
     }
 
+    // ---- phrase playback: recorded neural audio first, device TTS fallback ----
+    let player = null;
+    function stopAudio() {
+      if (player) { player.onerror = null; player.pause(); player = null; }
+      if ("speechSynthesis" in window) speechSynthesis.cancel();
+    }
+    function speakPhrase(id, rate) {
+      const p = BYID[id];
+      if (!p) return;
+      stopAudio();
+      const a = new Audio("audio/" + id + ".mp3");
+      a.playbackRate = rate || 1;
+      try { a.preservesPitch = true; } catch (e) {}
+      let fellBack = false;
+      const fallback = () => {
+        if (fellBack) return;
+        fellBack = true;
+        speakOrNotice(p.es, rate && rate < 1 ? 0.6 : 0.9);
+      };
+      a.onerror = fallback;
+      player = a;
+      a.play().catch(fallback);
+    }
+
     // ---- tabs ----
     const VIEWS = { today: renderToday, library: renderLibrary, progress: renderProgress };
     document.querySelectorAll(".tabbtn").forEach(b => b.addEventListener("click", () => {
@@ -286,7 +317,7 @@
     function reveal() {
       session.revealed = true;
       renderToday();
-      speakOrNotice(BYID[session.queue[0]].es);
+      speakPhrase(session.queue[0]);
     }
 
     function grade(got) {
@@ -353,8 +384,8 @@
             <div class="es-text">${esc(p.es)}</div>
             ${p.note ? `<div class="note-text">${esc(p.note)}</div>` : ""}
             <div class="btnrow">
-              <button class="btn ghost small" onclick="speakOrNotice(BYID['${id}'].es)">🔊</button>
-              <button class="btn ghost small" onclick="speakOrNotice(BYID['${id}'].es, 0.6)">🐢</button>
+              <button class="btn ghost small" onclick="speakPhrase('${id}')">🔊</button>
+              <button class="btn ghost small" onclick="speakPhrase('${id}', 0.65)">🐢</button>
             </div>
             ${session.practice
               ? `<div class="stack"><button class="btn accent" onclick="grade(true)">Next →</button></div>`
@@ -391,14 +422,27 @@
       html += '<div id="lib-list">' + libraryListHtml(match) + "</div>";
       v.innerHTML = html;
     }
+    let libOpen = new Set(); // expanded category slugs (session-only)
+    function toggleCat(slug) {
+      libOpen.has(slug) ? libOpen.delete(slug) : libOpen.add(slug);
+      renderLibraryList();
+    }
     function libraryListHtml(match) {
+      const searching = !!norm(libQuery.trim());
       let html = "";
       for (const [slug, label] of CAT_META) {
         const items = PHRASES.filter(p => p.cat === slug).filter(match);
-        if (!items.length) continue;
-        html += `<div class="cat-head">${label} <span class="muted">· ${items.length}</span></div>`;
+        if (searching && !items.length) continue; // hide empty cats only while searching
+        const all = searching ? items.length : PHRASES.filter(p => p.cat === slug).length;
+        const open = searching || libOpen.has(slug); // search results always expanded
+        html += `<button class="cat-row ${open ? "open" : ""}" onclick="toggleCat('${slug}')">
+          <span class="cat-label">${label}</span>
+          <span class="muted">${all}</span>
+          <span class="chev">▸</span>
+        </button>`;
+        if (!open) continue;
         for (const p of items) {
-          html += `<button class="prow" onclick="speakOrNotice(BYID['${p.id}'].es)">
+          html += `<button class="prow" onclick="speakPhrase('${p.id}')">
             <span class="txt"><span class="es">${esc(p.es)}</span><br><span class="en">${esc(p.en)}</span></span>
             ${levelDots(p.id)}
           </button>`;
@@ -486,15 +530,15 @@
         <div class="card"><div class="sect-title" style="margin-top:0">Last 7 days</div>
           <div class="chart">${chart}</div>
         </div>
-        <div class="sect-title">Voice</div>
+        <div class="sect-title">Fallback voice</div>
         <select class="search" style="margin-bottom:0" onchange="setVoice(this.value)">
           <option value="">Auto (best available)</option>
           ${esVoices().map(vo => `<option value="${esc(vo.voiceURI)}" ${DB.voice === vo.voiceURI ? "selected" : ""}>
             ${esc(vo.name)} (${esc(vo.lang)})</option>`).join("")}
         </select>
-        <p class="muted" style="font-size:.8rem;margin:6px 2px 0">Picking a voice plays a sample.
-          Tip: download “Paulina (Enhanced)” in iPhone Settings → Accessibility → Spoken Content →
-          Voices → Spanish for much better audio.</p>
+        <p class="muted" style="font-size:.8rem;margin:6px 2px 0">Phrases normally play recorded
+          neural audio. This device voice is only used if a recording can't load (e.g. offline).
+          Picking one plays a sample.</p>
         <div class="sect-title">New phrases per day</div>
         <div class="seg">
           ${[5, 10, 15, 20].map(n =>
