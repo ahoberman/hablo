@@ -13,8 +13,9 @@ const CATS = new Set([
   "greetings-basics", "courtesy", "smalltalk-you", "questions-connectors",
   "getting-around", "food-restaurants", "money-shopping", "time-plans",
   "opinions-reactions", "feelings-states", "emergencies-help", "daily-life",
+  "casual-slang",
 ]);
-const EXPECTED_COUNT = 500; // raised per expansion pack; final = 700 (strictEqual then)
+const EXPECTED_COUNT = 560; // raised per expansion pack; final = 700 (strictEqual then)
 
 test("phrase count", () => {
   assert.ok(Array.isArray(P));
