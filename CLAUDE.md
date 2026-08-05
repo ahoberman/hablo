@@ -29,6 +29,11 @@ Full behavior spec: `docs/superpowers/specs/2026-07-26-hablo-spanish-trainer-des
   newPerDay, streak: {count, lastDay}, log: {"YYYY-MM-DD": {rev, new}} }`.
   Dates are local-time `YYYY-MM-DD` strings.
 - Latin American Spanish only; no vosotros forms (validation test enforces).
+- **Pan-LatAm, not country-specific** (Andy's call 2026-08-05): phrases must be
+  understood everywhere in Latin America. No Mexican-only, Colombian-only, etc.
+  slang (no *no manches*, *qué chévere*, *órale*, *mande*). Notes must never name
+  a country or offer two regional variants — give one answer. The sole exception
+  is lesson reference material contrasting her Spain forms with the LatAm ones.
 
 ## SRS rules
 Levels 1–6, intervals 1/3/7/14/30/90 days. Got it → level+1 (cap 6);
