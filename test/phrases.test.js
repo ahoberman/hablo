@@ -14,8 +14,9 @@ const CATS = new Set([
   "getting-around", "food-restaurants", "money-shopping", "time-plans",
   "opinions-reactions", "feelings-states", "emergencies-help", "daily-life",
   "casual-slang", "verbs-action",
+  "past-ser-estar", "past-progressive", "prepositions-place", "quantifiers",
 ]);
-const EXPECTED_COUNT = 700; // library complete (v1.1 expansion)
+const EXPECTED_COUNT = 872; // v1.2 — teacher lessons 54/58/61/66 merged
 
 test("phrase count", () => {
   assert.ok(Array.isArray(P));

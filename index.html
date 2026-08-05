@@ -140,6 +140,31 @@
   }
   .seg button.on { background: var(--accent); border-color: var(--accent); color: #1a1006; }
   .sect-title { font-family: "Barlow Condensed", sans-serif; font-size: 1.15rem; font-weight: 700; margin: 18px 2px 8px; }
+  /* lessons */
+  .chip.lesson { background: #1d2a34; color: #7fc4ff; cursor: pointer; border: 0; font-family: inherit; }
+  .ltable-wrap { overflow-x: auto; margin-top: 6px; }
+  .ltable { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  .ltable th, .ltable td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; }
+  .ltable th { background: #232b34; font-weight: 600; }
+  .ltable td:first-child { color: var(--muted); }
+  .lnote { font-size: .8rem; color: var(--muted); font-style: italic; margin-top: 6px; }
+  .lrule .es { font-weight: 600; font-size: 1.05rem; }
+  .lrule .en { color: var(--muted); font-size: .9rem; margin-top: 4px; }
+  .ex-item { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .ex-item:last-child { border-bottom: 0; }
+  .ex-q { font-size: .98rem; line-height: 1.45; }
+  .ex-btn {
+    margin-top: 6px; background: #232b34; border: 0; border-radius: 8px; color: var(--muted);
+    padding: 7px 12px; font-size: .85rem; font-weight: 600; cursor: pointer; font-family: Inter, sans-serif;
+  }
+  .ex-a { margin-top: 6px; color: var(--good); font-weight: 600; font-size: .98rem; }
+  .ex-a .alt { display: block; color: var(--muted); font-weight: 400; font-size: .82rem; font-style: italic; margin-top: 3px; }
+  .lback {
+    background: none; border: 0; color: var(--accent); font-size: .95rem; font-weight: 600;
+    padding: 6px 2px; margin-bottom: 6px; cursor: pointer; font-family: Inter, sans-serif;
+  }
+  .lhead h2 { font-size: 1.45rem; line-height: 1.2; }
+  .lhead .en { color: var(--muted); font-size: .92rem; margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -149,11 +174,13 @@
     <section id="view-today"></section>
     <section id="view-library" hidden></section>
     <section id="view-progress" hidden></section>
+    <section id="view-lessons" hidden></section>
   </main>
   <nav id="tabs">
     <button class="tabbtn active" data-tab="today">Hoy</button>
     <button class="tabbtn" data-tab="library">Frases</button>
     <button class="tabbtn" data-tab="progress">Progreso</button>
+    <button class="tabbtn" data-tab="lessons">Clases</button>
   </nav>
   <script>
     // ---- storage shim (Rebuild pattern) ----
@@ -164,6 +191,7 @@
     };
   </script>
   <script src="phrases.js"></script>
+  <script src="lessons.js"></script>
   <script src="srs.js"></script>
   <script>
     // ---- state ----
@@ -263,7 +291,8 @@
     }
 
     // ---- tabs ----
-    const VIEWS = { today: renderToday, library: renderLibrary, progress: renderProgress };
+    const VIEWS = { today: renderToday, library: renderLibrary, progress: renderProgress,
+                    lessons: renderLessons };
     document.querySelectorAll(".tabbtn").forEach(b => b.addEventListener("click", () => {
       document.querySelectorAll(".tabbtn").forEach(x => x.classList.toggle("active", x === b));
       for (const t of Object.keys(VIEWS)) {
@@ -280,6 +309,10 @@
       ["smalltalk-you", "🗣️ Small talk"],
       ["questions-connectors", "🔗 Questions & connectors"],
       ["verbs-action", "⚡ Verbs in action"],
+      ["past-ser-estar", "⏮️ Past: ser & estar"],
+      ["past-progressive", "🔄 Past progressive"],
+      ["prepositions-place", "📍 Prepositions of place"],
+      ["quantifiers", "🔢 Each, all, both, none"],
       ["getting-around", "🧭 Getting around"],
       ["food-restaurants", "🌮 Food & restaurants"],
       ["money-shopping", "💵 Money & shopping"],
@@ -379,6 +412,11 @@
         <div class="card qcard">
           <div class="chips">
             <span class="chip">${CAT_LABEL[p.cat] || p.cat}</span>
+            ${p.lesson !== undefined
+              ? (LESSON_NS.has(p.lesson)
+                  ? `<button class="chip lesson" onclick="openLessonPage(${p.lesson})">Lección ${p.lesson} ›</button>`
+                  : `<span class="chip">Lección ${p.lesson}</span>`)
+              : ""}
             ${isNew && !session.practice ? '<span class="chip new">NEW</span>' : ""}
           </div>
           <div class="en-text">${esc(p.en)}</div>
@@ -497,6 +535,121 @@
       };
       reader.readAsText(file);
       input.value = "";
+    }
+
+    // ---- lessons (Clases) ----
+    const LESSONS = Array.isArray(window.LESSONS) ? window.LESSONS : [];
+    const LESSON_NS = new Set(LESSONS.map(l => l.n));
+    let openLesson = null; // lesson n, or null for the index
+
+    function lessonPhrases(n) { return PHRASES.filter(p => p.lesson === n); }
+
+    function openLessonPage(n) {
+      openLesson = n;
+      document.querySelector('[data-tab="lessons"]').click();
+      window.scrollTo(0, 0);
+    }
+
+    function backToLessons() { openLesson = null; renderLessons(); window.scrollTo(0, 0); }
+
+    // Practice a single lesson's phrases. practice:true means grade() writes no SRS state.
+    function practiceLesson(n) {
+      const ids = lessonPhrases(n).map(p => p.id);
+      if (!ids.length) return;
+      session = { queue: ids.slice(), answered: new Set(), revealed: false,
+                  doneRev: 0, doneNew: 0, total: ids.length, practice: true };
+      document.querySelector('[data-tab="today"]').click();
+      window.scrollTo(0, 0);
+    }
+
+    function showAnswer(btn, answer, note) {
+      const d = document.createElement("div");
+      d.className = "ex-a";
+      d.innerHTML = esc(answer) + (note ? `<span class="alt">${esc(note)}</span>` : "");
+      btn.replaceWith(d);
+    }
+
+    function lessonIndexHtml() {
+      const rows = LESSONS.slice().sort((a, b) => b.n - a.n).map(l => {
+        const count = lessonPhrases(l.n).length;
+        return `<button class="prow" onclick="openLessonPage(${l.n})">
+          <span class="txt">
+            <span class="es">Lección ${l.n} · ${esc(l.es)}</span><br>
+            <span class="en">${esc(l.en)}${count ? " · " + count + " frases" : ""}</span>
+          </span>
+          <span class="muted">›</span>
+        </button>`;
+      }).join("");
+      return `<p class="muted" style="margin:0 2px 12px;font-size:.88rem">
+                Lecciones de mi profesora — reglas, tablas y ejercicios.</p>${rows}`;
+    }
+
+    function blockHtml(b) {
+      if (b.type === "rule") {
+        return `<div class="card lrule" style="margin-bottom:10px">
+          <div class="es">${esc(b.es)}</div>
+          ${b.en ? `<div class="en">${esc(b.en)}</div>` : ""}
+        </div>`;
+      }
+      if (b.type === "table") {
+        const head = b.head.map(h => `<th>${esc(h)}</th>`).join("");
+        const rows = b.rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("");
+        return `<div class="card" style="margin-bottom:10px">
+          <div class="ltable-wrap"><table class="ltable">
+            <thead><tr>${head}</tr></thead><tbody>${rows}</tbody>
+          </table></div>
+          ${b.note ? `<div class="lnote">${esc(b.note)}</div>` : ""}
+        </div>`;
+      }
+      if (b.type === "examples") {
+        const rows = b.ids.filter(id => BYID[id]).map(id => {
+          const p = BYID[id];
+          return `<button class="prow" onclick="speakPhrase('${id}')">
+            <span class="txt"><span class="es">${esc(p.es)}</span><br><span class="en">${esc(p.en)}</span></span>
+            ${levelDots(id)}
+          </button>`;
+        }).join("");
+        return rows ? `<div class="sect-title">Ejemplos</div>${rows}` : "";
+      }
+      if (b.type === "exercise") {
+        const items = b.items.map(it => {
+          const note = it.note || "";
+          const btn = it.a
+            ? `<button class="ex-btn" onclick="showAnswer(this, ${JSON.stringify(it.a).replace(/"/g, "&quot;")}, ${JSON.stringify(note).replace(/"/g, "&quot;")})">Show answer</button>`
+            : (note ? `<div class="lnote">${esc(note)}</div>` : "");
+          return `<div class="ex-item"><div class="ex-q">${esc(it.q)}</div>${btn}</div>`;
+        }).join("");
+        return `<div class="sect-title">${esc(b.prompt)}</div>
+                <div class="card" style="margin-bottom:10px">${items}</div>`;
+      }
+      return "";
+    }
+
+    function lessonDetailHtml(l) {
+      const count = lessonPhrases(l.n).length;
+      return `
+        <button class="lback" onclick="backToLessons()">‹ Todas las lecciones</button>
+        <div class="card lhead" style="margin-bottom:12px">
+          <span class="chip">Lección ${l.n}</span>
+          <h2 style="margin-top:8px">${esc(l.es)}</h2>
+          <div class="en">${esc(l.en)}</div>
+        </div>
+        <div class="lnote" style="margin:0 2px 14px">Reglas, notas y respuestas preparadas
+          para acompañar las diapositivas de tu profesora. Si algo difiere de la clase,
+          ella tiene la razón.</div>
+        ${l.blocks.map(blockHtml).join("")}
+        ${count ? `<div class="stack"><button class="btn accent" onclick="practiceLesson(${l.n})">
+                     Practicar estas frases (${count})</button></div>` : ""}`;
+    }
+
+    function renderLessons() {
+      const v = document.getElementById("view-lessons");
+      if (!LESSONS.length) {
+        v.innerHTML = '<p class="muted" style="padding:12px 4px">No lessons loaded.</p>';
+        return;
+      }
+      const l = LESSONS.find(x => x.n === openLesson);
+      v.innerHTML = l ? lessonDetailHtml(l) : lessonIndexHtml();
     }
 
     function renderProgress() {
