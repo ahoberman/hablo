@@ -36,6 +36,29 @@ Missed it → level 1, due tomorrow; missed cards recycle within the session
 until answered Got once (first grade of the session is the one that writes
 SRS state). Session = due reviews (oldest first) + `newPerDay` new (default 10).
 
+## Adding new teacher lessons (repeatable)
+Andy's Spanish teacher sends numbered slide-deck PDFs (54–67 landed 2026-08-05;
+1–53 exist somewhere, more will come). To add a batch:
+1. Unzip the PDFs to a scratch dir. Group them by lesson topic (a main deck plus
+   its practice/homework decks = one lesson object).
+2. Extract per group: her rules, conjugation tables, example sentences, and every
+   practice exercise **with worked answers**. Read every page — the drill slides
+   in the middle carry the conjugations.
+3. Phrases: her example sentences become library entries with new sequential ids
+   and a `lesson: <n>` field. **Convert vosotros → ustedes** (the no-vosotros test
+   covers the whole library). Never emit a bare conjugation ("yo era") as a
+   phrase — build a real sentence. Insert as a contiguous block at the chosen
+   unlock position (id ≠ array position).
+4. Lessons: append a `lessons.js` object (`n` stable forever). Reference example
+   phrases by id so audio and level dots come free. Reference **tables keep her
+   vosotros row** with a Spain-only note — reference ≠ flashcards.
+5. Exercise answers: fill in what she left blank; when a blank genuinely accepts
+   two answers, say so in `note` rather than asserting one. Open-ended prompts
+   get `a: ""`. Never label content as "not on her slides" unless verified against
+   the PDF — a false attribution is worse than none; the per-lesson disclaimer in
+   `lessonDetailHtml` covers provenance generally.
+6. `tools/gen_audio.py` (idempotent) → `node --test` → commit to main.
+
 ## Deploy & dev
 - GitHub: `ahoberman/hablo` (public). Live: https://ahoberman.github.io/hablo/
   GitHub Pages from main root — **deploy = commit to main** (~1 min build).
